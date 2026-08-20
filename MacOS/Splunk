@@ -1,6 +1,8 @@
 # SplunkFound macOS evidence
 
-The original values discovered in this artifact have been removed from the public repository and replaced with SHA-256 fingerprints.
+The original values discovered in this artifact have been removed from the current revision of this public evidence file and replaced with SHA-256 fingerprints.
+
+> **History note:** Earlier Git commits may still contain the original values. Redacting the current file does not erase Git history.
 
 ## Deploy
 
@@ -16,4 +18,4 @@ Original format: Base64-looking string
 Original length: 44 characters
 SHA-256 (exact original stored value): 502556a21f087acff65d77143db43e23f06ae5bee358009c58a0f3d0d86324b2
 
-These fingerprints allow later comparison with preserved private evidence without exposing the original values publicly.
+These fingerprints allow later comparison with preserved private evidence without exposing the original values in the current public file revision.
