@@ -1,4 +1,19 @@
-Deploy
-4040feed9bb56f9a232de16f7c227822d9ccbcd20fb3255ba8833460dc134450
-Enc
-iZDEeMBNEQHRBV8B49JQYk8va8OiimqKP+dNhE3BBQ8=
+# SplunkFound macOS evidence
+
+The original values discovered in this artifact have been removed from the public repository and replaced with SHA-256 fingerprints.
+
+## Deploy
+
+Status: REDACTED
+Original format: 64-character hexadecimal string
+Original length: 64 characters
+SHA-256 (exact original stored value): c633a6d32492c9b5e0d5017d7f80eea3c99cb3e6f6cfe9dfd346f4da7f8b993b
+
+## Enc
+
+Status: REDACTED
+Original format: Base64-looking string
+Original length: 44 characters
+SHA-256 (exact original stored value): 502556a21f087acff65d77143db43e23f06ae5bee358009c58a0f3d0d86324b2
+
+These fingerprints allow later comparison with preserved private evidence without exposing the original values publicly.
