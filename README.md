@@ -17,6 +17,7 @@
 - [Executive Summary](#executive-summary)
 - [Why This Repository Exists](#why-this-repository-exists)
 - [Observed Evidence](#observed-evidence)
+- [iOS Evidence: T-Mobile Digits and Splunk MINT](#ios-evidence-t-mobile-digits-and-splunk-mint)
 - [Evidence vs. Interpretation](#evidence-vs-interpretation)
 - [What Splunk Could Be Used For](#what-splunk-could-be-used-for)
 - [Deployment Infrastructure](#deployment-infrastructure)
@@ -201,6 +202,52 @@ but this remains an interpretation until the generating software and configurati
 
 ---
 
+## iOS Evidence: T-Mobile Digits and Splunk MINT
+
+This repository also preserves a separate, redacted iOS application diagnostic finding. It is distinct from the macOS `Deploy` and `Enc` artifact: it identifies the application-side telemetry component and its configured collector, but it does not identify the meaning or origin of the `Deploy` or `Enc` values.
+
+### Preserved evidence
+
+The private source was a 90,861-byte `NotificationLog.txt` diagnostic log (SHA-256 `9fcb2a2d9f1682af75665b1a26aab17cf4e392ac975087c27e900ca072dcb3c5`). The public repository contains only a [redacted extract](iOS/NotificationLog.redacted.txt).
+
+The log identifies `UccViperProto` and `NotificaitonExtension`, records a T-Mobile Digits 2.0 user agent, and repeatedly names `SplunkManager.swift`. It shows `setupMint()` configuring a URL of the form:
+
+```text
+https://splk-hec.t-mobile.com:8088/services/collector/mint
+```
+
+The token is redacted. The original also contained private message content, phone numbers, personal names, device and app-group identifiers, account/session values, client identifiers, and authenticated request data; none of those are published.
+
+The log further records `logPNSinSplunk()` constructing notification-event data and `processPendingLogs() > processPendingLogs 0`. This establishes that the application initialized a Mint/HEC telemetry path and invoked code intended to build notification telemetry. It does **not** record an HTTP POST to that collector, an HEC response, indexer acknowledgement, packet capture, or a server-side event receipt. The retained `0` count is not proof that no upload ever occurred; it only records the observed pending-log state at those moments.
+
+### What Splunk MINT means here
+
+Splunk MINT was Splunk's mobile-app monitoring product and SDK family. Its historical documentation describes mobile-app projects, app keys, and iOS SDK support, and states that the commercial MINT products reached end of life in 2021. The 2022 diagnostic should therefore be read as evidence that this application retained or used a **Mint-formatted telemetry integration**, not as evidence that a current MINT commercial service was necessarily active. [Splunk MINT Add-on documentation](https://docs.splunk.com/Documentation/MintAddon/3.0.1/UserGuide/AbouttheSplunkMINTAddon)
+
+The endpoint in the log is especially specific: current Splunk documentation defines `services/collector/mint` as an HTTP Event Collector (HEC) endpoint for posting Mint-formatted data. HEC uses a token-based model and normally uses HTTPS port 8088. This aligns with the observed URL and the redacted `QOE token`; it does not identify the token's authorization scope, prove that the endpoint accepted data, or establish the operator of the destination beyond the hostname's `t-mobile.com` suffix. [HEC endpoint reference](https://help.splunk.com/en/splunk-cloud-platform/get-data-in/get-started-with-getting-data-in/10.3.2512/get-data-with-http-event-collector/http-event-collector-rest-api-endpoints)
+
+In practical terms, the log supports the following bounded interpretation:
+
+```text
+T-Mobile Digits notification extension
+        |
+        +-- SplunkManager.swift / setupMint()
+        |
+        +-- configured Mint-formatted HEC collector
+        |
+        +-- builds notification-event telemetry
+        |
+        +-- successful transmission: not demonstrated by this log
+```
+
+`SplunkManager.swift` is an application source-file label, not evidence of an Apple iOS system daemon, an installed Splunk Universal Forwarder, device management, remote control, or compromise. The evidence is consistent with carrier application telemetry/quality-of-experience instrumentation.
+
+### Security and publication boundary
+
+An HEC token is a credential-like value. Publishing the raw log would unnecessarily expose it and unrelated private communications and session material. The source is retained privately by its custodian; the public extract preserves only the minimum context needed to reproduce the analysis. An authorized administrator for the endpoint should treat the disclosed historical token as potentially exposed and rotate or disable it if it remains usable.
+
+---
+
 ## Evidence vs. Interpretation
 
 A major goal of this project is avoiding the mistake of turning an interesting artifact into a conclusion.
@@ -213,7 +260,10 @@ A major goal of this project is avoiding the mistake of turning an interesting a
 | **Observed** | The artifact contains an `Enc` field. |
 | **Observed** | `Enc` was followed by Base64-looking data. |
 | **Observed** | The original values are now represented publicly only by SHA-256 fingerprints. |
+| **Observed** | A redacted iOS application log names `SplunkManager.swift`, `setupMint()`, and a Mint-formatted HEC collector URL. |
+| **Observed** | The iOS log records notification-event construction but no HEC request result or server receipt. |
 | **Documented Splunk capability** | Splunk supports centralized deployment and management of deployment clients. |
+| **Documented Splunk capability** | HEC accepts Mint-formatted data at `services/collector/mint`. |
 | **Documented Splunk capability** | Splunk can collect and forward machine-generated data. |
 | **Documented Splunk capability** | Splunk uses cryptographic material to protect some stored credentials and configuration secrets. |
 | **Plausible** | The Mac may previously have participated in a Splunk-managed environment. |
@@ -221,6 +271,7 @@ A major goal of this project is avoiding the mistake of turning an interesting a
 | **Unverified** | The discovered `Deploy` value is specifically a Splunk deployment credential. |
 | **Unverified** | The discovered `Enc` value is specifically a Splunk encryption key. |
 | **Unverified** | Splunk was actively monitoring the computer when the artifact was discovered. |
+| **Unverified** | The iOS application successfully uploaded the observed notification data to the collector. |
 | **Unverified** | The artifacts indicate malicious surveillance or compromise. |
 
 This distinction is critical.
@@ -983,6 +1034,8 @@ Current research begins with macOS:
 ```text
 SplunkFound/
 ├── README.md
+├── iOS/
+│   └── NotificationLog.redacted.txt
 └── MacOS/
     └── Splunk
 ```

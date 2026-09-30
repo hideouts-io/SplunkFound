@@ -1,0 +1,26 @@
+# Redacted iOS diagnostic extract — T-Mobile Digits / Splunk Mint
+
+# Original private artifact
+# Filename: NotificationLog.txt
+# SHA-256: 9fcb2a2d9f1682af75665b1a26aab17cf4e392ac975087c27e900ca072dcb3c5
+# Size: 90,861 bytes
+# Line count: 1,150
+#
+# The original is not published. This extract removes phone numbers, names,
+# message text, message and conversation identifiers, app-group paths, device
+# identifiers, session values, client identifiers, request URLs, and the HEC
+# token. Timestamps, component names, method names, and the collector URL are
+# retained because they support the limited finding documented in the README.
+
+2022-04-16 02:54:01.421 [Info] > UccViperProto Version: 4.1.160 Build: 4.1.160
+2022-04-16 02:59:23.533 [Info] > NotificaitonExtension Version: 4.1.160 Build: 4.1.160
+2022-04-16 02:59:23.535 [Info] [SplunkManager.swift:66] setupMint() > QOE token <REDACTED> - hecUrl https://splk-hec.t-mobile.com:8088/services/collector/mint
+2022-04-16 02:59:23.535 [Info] [SplunkManager.swift:80] processPendingLogs() > processPendingLogs 0
+2022-04-16 02:59:23.558 [Info] [SplunkManager.swift:128] logPNSinSplunk(pns:type:) > logPNSinSplunk
+2022-04-16 02:59:23.561 [Info] [SplunkManager.swift:492] init() > SplunkManager deviceID:<REDACTED>
+2022-04-16 02:59:23.562 [Info] [SplunkManager.swift:157] logPNSinSplunk(pns:type:) > <REDACTED: device, account, line, notification, and event fields>
+2022-04-16 14:35:21.319 [Info] [SplunkManager.swift:38] setupMint() > Splunk is already initiated
+2022-04-21 23:18:55.183 [Info] [SplunkManager.swift:66] setupMint() > QOE token <REDACTED> - hecUrl https://splk-hec.t-mobile.com:8088/services/collector/mint
+2022-04-21 23:18:55.183 [Info] [SplunkManager.swift:80] processPendingLogs() > processPendingLogs 0
+
+# End of redacted extract.
