@@ -1,13 +1,13 @@
 # SplunkFound
 
-### macOS forensic research into unexplained Splunk deployment, logging, and encryption artifacts
+### Forensic research into unexplained Splunk, iOS telemetry, and Apple-like sandbox artifacts
 
 ![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)
 ![Research](https://img.shields.io/badge/type-security%20research-8250df)
 ![Analysis](https://img.shields.io/badge/analysis-digital%20forensics-0969da)
 ![Status](https://img.shields.io/badge/status-investigation-f0ad4e)
 
-> **Scope:** SplunkFound documents Splunk-related artifacts discovered on a macOS computer that may indicate previous or current participation in a Splunk deployment, logging, forwarding, monitoring, or management environment. The repository distinguishes **observed evidence** from **interpretation**. The artifacts are unusual and worth investigating, but their presence alone does not prove that the computer was actively monitored, remotely controlled, or compromised.
+> **Scope:** SplunkFound documents Splunk-related artifacts, iOS application telemetry evidence, and an Apple-like sandbox-profile fragment. The repository distinguishes **observed evidence** from **interpretation**. The artifacts are unusual and worth investigating, but their presence alone does not prove monitoring, remote control, compromise, profile loading, or malicious modification.
 
 ---
 
@@ -18,6 +18,7 @@
 - [Why This Repository Exists](#why-this-repository-exists)
 - [Observed Evidence](#observed-evidence)
 - [iOS Evidence: T-Mobile Digits and Splunk MINT](#ios-evidence-t-mobile-digits-and-splunk-mint)
+- [Sandbox Profile Fragment: High-Priority Provenance Anomaly](#sandbox-profile-fragment-high-priority-provenance-anomaly)
 - [Evidence vs. Interpretation](#evidence-vs-interpretation)
 - [What Splunk Could Be Used For](#what-splunk-could-be-used-for)
 - [Deployment Infrastructure](#deployment-infrastructure)
@@ -248,6 +249,131 @@ An HEC token is a credential-like value. Publishing the raw log would unnecessar
 
 ---
 
+## Sandbox Profile Fragment: High-Priority Provenance Anomaly
+
+The repository contains a separate macOS artifact, [`MacOS/Sandbox/com.apple.Opendirectroyd-deny-default.sb`](MacOS/Sandbox/com.apple.Opendirectroyd-deny-default.sb). It is not evidence that Splunk executed on macOS, and it is not evidence that any process loaded a sandbox policy. It is included because the text itself contains a Splunk comment and because its Apple-like but misspelled name makes provenance the primary question.
+
+### Artifact record
+
+| Field | Value |
+|---|---|
+| Public artifact | [`com.apple.Opendirectroyd-deny-default.sb`](MacOS/Sandbox/com.apple.Opendirectroyd-deny-default.sb) |
+| SHA-256 | `bce52bd373803eef80d9d548bd2d5065aece5d60a87b7a5a6d7bd25345557c7b` |
+| Size | 3,368 bytes |
+| Format | 81-line ASCII text with CRLF line endings |
+| Source filename | `com.apple.Opendirectroyd-deny-default.sb` |
+| Publication status | Byte-identical supplied text; no secrets, credentials, personal data, or executable code were identified in this file |
+
+The public copy was byte-compared against the supplied file before publication. The original should nevertheless be retained separately with its source-volume metadata, timestamps, ownership, ACLs, extended attributes, and acquisition context.
+
+### Why the misspelling matters
+
+The filename—and the first line of the text—use `Opendirectroyd`. A nearby comment instead uses the ordinary Apple daemon spelling `opendirectoryd`:
+
+```text
+com.apple.Opendirectroyd-deny-default.sb
+;; Shadowhash files
+;; 1. opendirectoryd/src/modules/PlistFile/PlistFile.c :: odm_create_connection_with_options()
+;; 2. No events in Splunk so far.
+```
+
+An Apple-like reverse-DNS name with a near-miss spelling deserves scrutiny because a filename can create a misleading impression of platform provenance. An investigator should not treat this as an official Apple profile merely because it starts with `com.apple.`.
+
+At the same time, the spelling is **not a proof of maliciousness**. A copied or renamed export, a manually named research artifact, a transcription error, file corruption, or a concatenated profile fragment can produce exactly the same mismatch. The file has no documented original system path, no known loader, no identified macOS build, and no same-build Apple baseline in this evidence set.
+
+### Can the chance of an official misspelling be calculated?
+
+No defensible probability can be calculated from this one file. A useful probability would need a denominator: a versioned corpus of official sandbox-profile filenames for the relevant macOS build, the original installation medium, and rules for deciding whether an entry is a genuine Apple source filename rather than a renamed copy or fragment.
+
+The correct conclusion is qualitative: the mismatch is a **high-priority provenance anomaly** because it conflicts with a nearby `opendirectoryd` reference and mimics Apple naming. It becomes stronger evidence of non-Apple origin only if an exact same-build Apple installer or trusted baseline lacks the filename and the artifact's rules cannot be reconciled as an exported fragment. It becomes evidence of hostile modification only if there is further proof of a modified file, a loader, an effective policy change, and resulting behavior.
+
+### Observed syntax and the provenance problem
+
+The text resembles fragments of macOS Seatbelt Profile Language (SBPL), including `allow`, `define`, `require-all`, `mach-lookup`, and `iokit-open-user-client`. It also contains raw un-commented text such as `Hdcp hoover protocol` and `HUBBLE`.
+
+Those raw tokens make parser and context validation important. They could be inert text from an extraction or merge, identifiers that depend on missing imports, a hand-assembled fragment, or malformed content. A parser error is not enough to call the file tampered: Apple sandbox profiles can rely on imports and parameters not available outside the original build environment. Conversely, successful parsing does not prove the profile was deployed, loaded, or effective.
+
+### Rules, labels, and bounded interpretations
+
+| Observed text or rule | What it can show | Hypothetical adversarial concern — unproven | Evidence required before escalation |
+|---|---|---|---|
+| `com.apple.Opendirectroyd-deny-default.sb` | An Apple-like name that differs from `opendirectoryd`. | A renamed profile could masquerade as an Apple component or distract review. | Original path and timeline; same-build baseline comparison; loader/process reference to this exact hash. |
+| `;; Shadowhash files` and the `opendirectoryd` comment | A comment about local directory-service shadow-hash material or source code. Comments have no runtime effect. | The comment could hint at interest in credential-related data. | Actual access events, calling process, privilege context, and profile-loading evidence. |
+| `(allow file-read* file-write* ... /private/var/db/shadow)` | A rule textually scoped to a sensitive local path. An SBPL allow rule does not itself bypass Unix permissions, SIP, code-signing, or other platform controls. | A changed policy might seek to remove a sandbox restriction around local directory-service data. | Effective policy, attributable process, successful reads/writes, and before/after trusted-profile diff. |
+| `(with telemetry)` | A term whose SBPL grammar and original source version remain unverified. Its presence is not itself a network instruction. | A custom or altered modifier could hypothetically mark, audit, or route access. | Exact grammar/version, compiler output, source comparison, process logs, and network correlation. |
+| `;; 2. No events in Splunk so far.` | An ignored comment. It proves neither a Splunk process nor a network connection. | It could be a developer note, copied annotation, narrative insertion, or a clue to a logging design. | Splunk configuration, executable/SDK provenance, DNS/TLS evidence, packet capture, HTTP evidence, or authorized server-side records. |
+| `Hdcp hoover protocol` | `HDCP` usually concerns protected audiovisual-content handling. `hoover` is not identified here as a standard Apple or HDCP term. | The phrase could be camouflage for display/media collection only in a deliberately adversarial scenario. | Syntax role, source comparison, associated process, screen/capture permissions, IOSurface activity, and egress evidence. |
+| `audio-input`, `device-microphone`, and audio IOKit classes | Platform-style audio input/output definitions. | A modified profile might broaden microphone access for an associated process. | Process identity, profile loading, TCC state, CoreAudio/IOKit activity, recorded artifacts, or network transmission. |
+| `audio-output` and `com.apple.relatived.tempest` | A lowercase Mach-service string referenced in the audio-output definition. | A service lookup could support covert IPC only if the service and caller are established. | Launchd registration, caller identity, audit/Mach-message evidence, and a baseline comparison. |
+| `tempest` versus TEMPEST | Only a lexical resemblance. The observed lowercase service label does not establish an electromagnetic side-channel relationship. | None without a separate technical chain of evidence. | RF/EM collection evidence, hardware/firmware context, a validated service meaning, and an attributable process. |
+| `com.apple.appleneuralengine`, `com.apple.aned.read-only`, and `com.apple.appleneuralengine.private.allow` | Private-looking Neural Engine service and entitlement labels. The rule itself restricts a private lookup behind an entitlement condition. | A non-Apple component might try to use private compute services outside their intended boundary. | Code signature, entitlements, loaded policy, service activity, model/input/output evidence, and device compatibility. |
+| `afterburner`, `AppleAfterburnerUserClient`, and `com_apple_AthenaUserClient` | Apple Afterburner is a Mac Pro ProRes/ProRes RAW acceleration technology; the labels are consistent with media hardware. | An unexpected caller could use an Apple hardware label as cover. | Hardware inventory, IOKit/process tracing, media-processing artifacts, and exact Apple baseline comparison. |
+| `datadetectors`, `/private/var/db/datadetectors/sys`, and `com.apple.DataDetectorsSourceAccess` | Data Detectors can recognize semantic entities such as addresses, phone numbers, links, and email addresses. A system resource path can be normal. | A privacy issue is possible only if a process is shown reading user content and invoking the service. | Caller, source content, file/service audit trail, output artifact, and egress evidence. |
+| `com.apple.morphology` and `com.apple.morphology.internal` | Preference-domain references guarded by `is-apple-signed-executable` in the rule text. | A modified policy could target a private preference domain. | Effective profile, code signature, preference-access evidence, baseline diff, and sensitive-data flow. |
+| `HUBBLE`, `IOSurfaceRootUserClient`, and the HEIF-preview comment | IOSurface and HEIF preview code are consistent with image/display handling. The bare `HUBBLE` token needs provenance and syntax context. | A non-Apple loaded profile could theoretically seek privileged image-surface access. That is not evidence of screenshots, screen recording, camera capture, or transmission. | Parser context, Apple baseline, process trace, Screen Recording/Camera TCC state, IOSurface diagnostics, and media/egress evidence. |
+| `appsandbox-fsctl` and APFS/HFS/SMB controls | Named filesystem-control operations that might support ordinary sandboxed file workflows. | A modified rule could broaden metadata or document-ID operations. | Actual `fsctl` calls, caller identity, security/audit records, and file-system impact. |
+| CRLF line endings | Copy, editor, or export context. | At most a weak provenance clue when combined with a reliable source-format comparison. | Original-medium metadata, related artifacts, byte comparison, and collection chronology. |
+
+Apple documents Data Detection as recognition of semantic entities such as phone numbers, URLs, and addresses; that capability is not evidence that this fragment collected or sent any content. [Apple DataDetection documentation](https://developer.apple.com/documentation/DataDetection?changes=_5) Apple documents Afterburner as a ProRes/ProRes RAW accelerator for Mac Pro, and Core ML uses the Neural Engine for on-device computation; neither label independently indicates surveillance. [Apple Afterburner documentation](https://support.apple.com/en-gb/101662), [Apple Core ML documentation](https://developer.apple.com/documentation/CoreML)
+
+### The adverse scenario, properly bounded
+
+If this were a maliciously taken-over sandbox profile, a coherent hypothesis would be: an actor created or renamed an Apple-like file, modified local-data or service-lookup rules, arranged for a process to load it, and then used the expanded access for collection or transmission. The comments and raw text could be camouflage, artifacts of a manual edit, or attempts to shape later interpretation.
+
+None of that chain is demonstrated. The current evidence has no process that loads this exact file, no profile compilation record, no effective-policy capture, no file-access audit, no microphone activity, no IOSurface trace, no Neural Engine usage, no Splunk traffic, and no data-exfiltration record. A credible finding needs the entire chain rather than an alarming interpretation of static strings.
+
+### Three competing explanations
+
+1. **Apple-origin fragment or version/provenance issue.** The profile-like material may have been extracted from an Apple build context, with private service labels and comments retained but filename/context changed during collection.
+2. **Renamed, copied, manually assembled, or corrupted artifact.** The file may be a research fragment, export, concatenation, or malformed text that was never a deployed profile.
+3. **Hypothetical malicious takeover.** An actor may have changed an Apple-like profile and arranged for it to run. This remains a hypothesis until provenance, loading, policy effect, and behavior are independently proven.
+
+### What would strengthen or weaken the case
+
+The highest-value next step is a byte-for-byte comparison against a **same-build Apple installer payload** or trusted system-profile baseline. This is stronger than comparison with current macOS or a random historical online copy.
+
+Evidence that would strengthen an adverse hypothesis:
+
+- the exact filename and content are absent from the relevant Apple build while a modified version exists in an active profile directory;
+- a non-Apple, altered, or unexpectedly signed process loads this exact profile;
+- the effective policy grants an access path not present in the trusted baseline;
+- audit records show the process exercising the sensitive file, microphone, service, image-surface, or filesystem operations; and
+- network evidence then attributes data transmission to that process.
+
+Evidence that would weaken it:
+
+- an exact same-build Apple payload match or a documented Apple source path;
+- proof that the file is an inert extracted fragment, renamed copy, or syntax-incomplete source;
+- no process references or loads the artifact; or
+- no effective permission or runtime activity corresponding to the rules.
+
+### Explicit non-findings
+
+This repository does **not** claim that the fragment:
+
+- was loaded by macOS or by any application;
+- gave a process access to `/private/var/db/shadow`;
+- bypassed Unix permissions, SIP, entitlements, TCC, or code signing;
+- activated a microphone, captured a display, camera, or image surface;
+- accessed Data Detectors output or morphology preferences;
+- used the Apple Neural Engine or Afterburner hardware;
+- connected to Splunk, uploaded data, enabled remote control, or exfiltrated content;
+- was created by an attacker; or
+- is related to TEMPEST electromagnetic surveillance.
+
+### Safe investigation workflow
+
+1. Preserve the source and work on a verified copy.
+2. Record the original path, timestamps, owners, ACLs, extended attributes, source volume, and adjacent artifacts.
+3. Establish the relevant macOS build before selecting a trusted comparison source.
+4. Compare the name and bytes to the same-build Apple installer payload.
+5. Determine parser validity only in the correct SBPL import/parameter context; do not load the artifact on a production Mac merely to test it.
+6. Search for the exact hash and filename in system profile locations, launch configurations, application bundles, package receipts, and logs.
+7. If a process is found, verify its code signature, entitlements, launch ancestry, effective sandbox, TCC state, and real activity.
+8. Correlate any Splunk conclusion only with direct configuration, process, DNS/TLS, packet, request/response, or server-side evidence.
+
+---
+
 ## Evidence vs. Interpretation
 
 A major goal of this project is avoiding the mistake of turning an interesting artifact into a conclusion.
@@ -262,6 +388,7 @@ A major goal of this project is avoiding the mistake of turning an interesting a
 | **Observed** | The original values are now represented publicly only by SHA-256 fingerprints. |
 | **Observed** | A redacted iOS application log names `SplunkManager.swift`, `setupMint()`, and a Mint-formatted HEC collector URL. |
 | **Observed** | The iOS log records notification-event construction but no HEC request result or server receipt. |
+| **Observed** | A byte-identical public `.sb` artifact has an Apple-like but misspelled `Opendirectroyd` filename, a Splunk comment, and profile-like rules. |
 | **Documented Splunk capability** | Splunk supports centralized deployment and management of deployment clients. |
 | **Documented Splunk capability** | HEC accepts Mint-formatted data at `services/collector/mint`. |
 | **Documented Splunk capability** | Splunk can collect and forward machine-generated data. |
@@ -272,6 +399,7 @@ A major goal of this project is avoiding the mistake of turning an interesting a
 | **Unverified** | The discovered `Enc` value is specifically a Splunk encryption key. |
 | **Unverified** | Splunk was actively monitoring the computer when the artifact was discovered. |
 | **Unverified** | The iOS application successfully uploaded the observed notification data to the collector. |
+| **Unverified** | The `.sb` artifact was official, loaded, modified, effective, or responsible for any observed system behavior. |
 | **Unverified** | The artifacts indicate malicious surveillance or compromise. |
 
 This distinction is critical.
@@ -1037,6 +1165,8 @@ SplunkFound/
 ├── iOS/
 │   └── NotificationLog.redacted.txt
 └── MacOS/
+    ├── Sandbox/
+    │   └── com.apple.Opendirectroyd-deny-default.sb
     └── Splunk
 ```
 
@@ -1108,12 +1238,12 @@ That distinction is what turns speculation into digital forensics.
 
 **Status:** Investigation ongoing.
 
-**Observed:** Splunk-related artifact containing `Deploy` and `Enc` fields.
+**Observed:** Splunk-related `Deploy` and `Enc` fields; a redacted iOS Mint/HEC telemetry diagnostic; and a public Apple-like sandbox fragment with a misspelled `Opendirectroyd` name.
 
 **Public evidence:** Original values redacted; SHA-256 fingerprints retained.
 
-**Possible significance:** Deployment, configuration, logging, forwarding, or protected configuration material.
+**Possible significance:** Deployment, configuration, logging, forwarding, protected configuration material, iOS application telemetry, or a sandbox-profile provenance anomaly.
 
-**Not yet established:** Exact Splunk component, origin, active monitoring status, or purpose.
+**Not yet established:** Exact Splunk component, origin, active monitoring status, purpose, sandbox-file provenance, profile loading, policy effect, or hostile modification.
 
 > **Evidence first. Attribution second. Conclusions last.**

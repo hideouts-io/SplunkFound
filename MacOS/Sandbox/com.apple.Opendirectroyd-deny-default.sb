@@ -1,0 +1,81 @@
+com.apple.Opendirectroyd-deny-default.sb
+;; Shadowhash files
+;; 1. opendirectoryd/src/modules/PlistFile/PlistFile.c :: odm_create_connection_with_options()
+;; 2. No events in Splunk so far.
+(allow file-read* file-write* (with telemetry)
+       (subpath                "/private/var/db/shadow")
+       (mount-relative-subpath "/private/var/db/shadow"))
+
+Hdcp hoover protocol
+
+
+(define (audio-input)
+  (allow device-microphone)
+  (allow iokit-open-user-client
+         (require-all
+           (iokit-connection "AppleHDAEngineInput")
+           (iokit-user-client-class
+             "IOAudioControlUserClient"
+             "IOAudioEngineUserClient"))))
+(define (audio-output)
+  (allow iokit-open-user-client
+         (require-all
+           (iokit-connection "AppleHDAEngineOutput")
+           (iokit-user-client-class
+             "IOAudioControlUserClient"
+             "IOAudioEngineUserClient")))
+  (allow mach-lookup (global-name "com.apple.relatived.tempest")))
+(define (ane-client)
+  (allow iokit-open-user-client
+         (iokit-user-client-class
+           "H11ANEInDirectPathClient"
+           "H1xANELoadBalancerDirectPathClient"))
+  (allow mach-lookup (global-name "com.apple.appleneuralengine"))
+  (with-filter
+    (extension-class "com.apple.aned.read-only")
+    (allow file-issue-extension
+           (subpath (param "application_bundle"))
+           (container-subpath "/Documents")
+           (container-subpath "/Library")
+           (container-subpath "/tmp")
+           (extension
+             "com.apple.app-sandbox.read"
+             "com.apple.app-sandbox.read-write")))
+  (when (entitlement "com.apple.appleneuralengine.private.allow")
+        (allow mach-lookup
+               (global-name "com.apple.appleneuralengine.private"))))
+(define (afterburner)
+  (allow iokit-open-user-client
+         (iokit-user-client-class
+           "AppleAfterburnerUserClient"
+           "com_apple_AthenaUserClient")))
+(define (appsandbox-fsctl)
+  (allow system-fsctl
+         (fsctl-command APFSIOC_DOC_ID_TO_FILE_ID)
+         (fsctl-command APFSIOC_GET_CLONE_INFO)
+         (fsctl-command HFSIOC_SET_HOTFILE_STATE)
+         (fsctl-command HFSIOC_TRANSFER_DOCUMENT_ID)
+         (fsctl-command HFSIOC_VOLUME_STATUS)
+         (fsctl-command afpfsByteRangeLock2FSCTL)
+         (fsctl-command afpfsGetMountInfoFSCTL)
+         (fsctl-command afpfsSubMountFSCTL)
+         (fsctl-command smbfsUniqueShareIDFSCTL)))
+
+(define (datadetectors)
+  (allow file-read* (subpath "/private/var/db/datadetectors/sys"))
+  (allow mach-lookup (global-name "com.apple.DataDetectorsSourceAccess")))
+(define (foundation)
+  (allow user-preference-read
+         (preference-domain "com.apple.morphology")
+         (require-all
+           (process-attribute is-apple-signed-executable)
+           (preference-domain "com.apple.morphology.internal"))))
+
+HUBBLE
+(allow iokit-open-user-client
+       (iokit-user-client-class "IOSurfaceRootUserClient")
+       (apply-message-filter
+            (deny iokit-external-method)
+            (allow iokit-external-method
+                   (iokit-method-number 11 20                  ;; HEIF image preview only, still required for Hubble for flows going through LargeImageUnpacker
+                                        0 1 2 3 9 10 12 13 14 15 23 27 32 34 35 44))))
